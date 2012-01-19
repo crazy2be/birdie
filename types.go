@@ -4,7 +4,7 @@ import (
 	"io"
 )
 
-func ReadByte(rd io.Reader) (byte, error) {
+func readByte(rd io.Reader) (byte, error) {
 	buf := make([]byte, 1)
 	n, err := rd.Read(buf)
 	if n != 1 {
@@ -13,17 +13,29 @@ func ReadByte(rd io.Reader) (byte, error) {
 	return buf[0], err
 }
 
-// ReadUint16 reads two bytes and ors them together, with b1 << 8 | b2. Returns an error, if any.
-func ReadUint16(rd io.Reader) (uint16, error) {
-	b1, err := ReadByte(rd)
+// ReadUint16 reads two bytes and ors them together, with b1 << 8 | b2. Returns an error, if any. NOT VARIABLE LENGTH.
+func readUint16(rd io.Reader) (uint16, error) {
+	b1, err := readByte(rd)
 	if err != nil {
 		return 0, err
 	}
-	b2, err := ReadByte(rd)
+	b2, err := readByte(rd)
 	if err != nil {
 		return uint16(b1), err
 	}
 	return uint16(b1) << 8 | uint16(b2), nil
+}
+
+func readUint32(rd io.Reader) (uint32, error) {
+	s1, err := readUint16(rd)
+	if err != nil {
+		return 0, err
+	}
+	s2, err := readUint16(rd)
+	if err != nil {
+		return uint32(s1), err
+	}
+	return uint32(s1) << 16 | uint32(s2), nil
 }
 
 // ReadInt reads a variable-length integer from rd and returns it and an error, if any. Encodes integers bytewise in groups sized by powers of two, with the first bit in each group signifiying if there are additional byte groups to be read.
@@ -34,7 +46,7 @@ func ReadUint16(rd io.Reader) (uint16, error) {
 func ReadInt(rd io.Reader) (uint64, error) {
 	var num uint64
 	
-	b1, err := ReadByte(rd)
+	b1, err := readByte(rd)
 	if (err != nil) {
 		return 0, err
 	}
@@ -45,7 +57,7 @@ func ReadInt(rd io.Reader) (uint64, error) {
 	}
 	
 	
-	b2, err := ReadByte(rd)
+	b2, err := readByte(rd)
 	if err != nil {
 		return num, err
 	}
@@ -57,15 +69,27 @@ func ReadInt(rd io.Reader) (uint64, error) {
 	}
 	
 	
-	s1, err := ReadUint16(rd)
+	s1, err := readUint16(rd)
 	if err != nil {
 		return num, err
 	}
 	
 	num = num << 15
 	num |= uint64(s1 & 0x7FFF)
-	if (s1 & 0x8000) == 0x8000 {
-		panic("Integers longer than 4 bytes not yet implemented in ReadInt()!")
+	if (s1 & 0x8000) != 0x8000 {
+		return num, nil
+	}
+	
+	
+	i1, err := readUint32(rd)
+	if err != nil {
+		return num, err
+	}
+	
+	num = num << 31
+	num |= uint64(i1 & 0x7FFFFFFF)
+	if (i1 & 0x80000000) == 0x80000000 {
+		panic("Integers longer than 8 bytes (uint64) not implemented in ReadInt()!")
 	}
 	return num, nil
 }
