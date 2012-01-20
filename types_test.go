@@ -3,27 +3,8 @@ package birdie
 import (
 	"testing"
 	"bytes"
+	"log"
 )
-
-func TestFullReadWrite(t* testing.T) {
-	for i := uint64(0); i < 0x7F7F7F7F7F7F7F7F; i++ {
-		buf := &bytes.Buffer{}
-		err := WriteInt(buf, i)
-		if err != nil {
-			t.Fatal(err)
-		}
-		num, err := ReadInt(buf)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if num != i {
-			t.Fatal("Error encoding and decoding integer. Got", num, "expected", i)
-		}
-		if i % 100000 == 0 {
-			println("On number", i)
-		}
-	}
-}
 
 func TestRead4BitInt(t* testing.T) {
 	buf := bytes.NewBuffer([]byte{0xFF, 0xFF, 0xFF, 0x7F})
@@ -55,7 +36,7 @@ func TestRead4BitInt(t* testing.T) {
 
 func TestWrite4ByteInt(t* testing.T) {
 	num := uint64(76742655)
-	expected := []byte{0x92, 0xA5, 0x7F, 0xFF}
+	expected := []byte{0xA4, 0xCB, 0xFF, 0x7F}
 	buf := &bytes.Buffer{}
 	
 	err := WriteInt(buf, num)
@@ -64,5 +45,25 @@ func TestWrite4ByteInt(t* testing.T) {
 	}
 	if !bytes.Equal(expected, buf.Bytes()) {
 		t.Fatal("Got incorrect bytes! Expected", expected, "got", buf.Bytes())
+	}
+}
+
+func BenchmarkEncodeDecode(b *testing.B) {
+	var err error
+	var num uint64
+	buf := &bytes.Buffer{}
+	
+	for i := uint64(0); i < uint64(b.N); i++ {
+		err = WriteInt(buf, i)
+		if err != nil {
+			log.Fatal(err)
+		}
+		num, err = ReadInt(buf)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if num != i {
+			log.Fatal("Error encoding and decoding integer. Got", num, "expected", i)
+		}
 	}
 }

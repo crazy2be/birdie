@@ -2,7 +2,6 @@ package birdie
 
 import (
 	"io"
-	"fmt"
 )
 
 func readByte(rd io.Reader) (byte, error) {
@@ -25,6 +24,7 @@ func ReadInt(rd io.Reader) (uint64, error) {
 	var num uint64
 	var err error
 	var b byte = 0x80
+	var digits uint64
 	
 	for (b & 0x80) == 0x80 {
 		b, err = readByte(rd)
@@ -32,7 +32,7 @@ func ReadInt(rd io.Reader) (uint64, error) {
 			return num, err
 		}
 		
-		digits := uint64(b & 0x7F)
+		digits = uint64(b & 0x7F)
 		num = num << 7;
 		num |= digits;
 	}
@@ -60,9 +60,11 @@ func WriteInt(wr io.Writer, num uint64) error {
 	}
 	
 	sentFirst := false
+	var b byte
+	var err error
 	
 	for ; shifty < 64; shifty -= 7 {
-		b := byte((num & (0x7F << shifty)) >> shifty)
+		b = byte((num & (0x7F << shifty)) >> shifty)
 		if b == 0 && !sentFirst {
 			continue
 		}
@@ -70,7 +72,7 @@ func WriteInt(wr io.Writer, num uint64) error {
 		if shifty > 0 {
 			b = b | 0x80
 		}
-		err := writeByte(wr, b)
+		err = writeByte(wr, b)
 		if err != nil {
 			return err
 		}
