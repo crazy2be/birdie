@@ -1,7 +1,12 @@
 package birdie
 
 import (
+	"errors"
 	"io"
+)
+
+var (
+	ErrNotAllWritten = errors.New("Not all bytes written to stream")
 )
 
 func readByte(rd io.Reader) (byte, error) {
@@ -40,28 +45,15 @@ func ReadInt(rd io.Reader) (uint64, error) {
 	return num, nil
 }
 
-func writeByte(wr io.Writer, b byte) error {
-	n, err := wr.Write([]byte{b})
-	if n != 1 {
-		return err
-	}
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
+// WriteInt writes num to the io.Writer given by wr, using the same encoding as the ReadInt() method above. Returns an error, if any.
 func WriteInt(wr io.Writer, num uint64) error {
 	var shifty uint = 64 - 8 // 64 bit integer mines 8 bit integer (byte)
-	
-	// Our algorithm simply doesn't write anything for a value of zero, but we still need to write something as per the protocol. Handle it as a special case.
-	if num == 0 {
-		return writeByte(wr, 0x00)
-	}
 	
 	sentFirst := false
 	var b byte
 	var err error
+	// Maximum length is 9 bytes to encode a uint64
+	buf := make([]byte, 0, 9)
 	
 	for ; shifty < 64; shifty -= 7 {
 		b = byte((num & (0x7F << shifty)) >> shifty)
@@ -72,10 +64,22 @@ func WriteInt(wr io.Writer, num uint64) error {
 		if shifty > 0 {
 			b = b | 0x80
 		}
-		err = writeByte(wr, b)
-		if err != nil {
-			return err
-		}
+		buf = buf[:len(buf)+1]
+		buf[len(buf)-1] = b
 	}
+	
+	// We always want to send at least one byte
+	if !sentFirst {
+		buf = append(buf, 0x00)
+	}
+	
+	n, err := wr.Write(buf)
+	if err != nil {
+		return err
+	}
+	if n != len(buf) {
+		return ErrNotAllWritten
+	}
+	
 	return nil
 }
