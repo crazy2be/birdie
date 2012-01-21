@@ -48,7 +48,7 @@ func TestWrite4ByteInt(t* testing.T) {
 	}
 }
 
-func BenchmarkEncodeDecode(b *testing.B) {
+func BenchmarkIntEncodeDecode(b *testing.B) {
 	var err error
 	var num uint64
 	buf := &bytes.Buffer{}
@@ -64,6 +64,43 @@ func BenchmarkEncodeDecode(b *testing.B) {
 		}
 		if num != i {
 			log.Fatal("Error encoding and decoding integer. Got", num, "expected", i)
+		}
+	}
+}
+
+// Generate random strings for the benchmarking function.
+var pool string = "`1234567890-=~!@#$%^&*()_+ABCDEFGHIJKLMNOGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz[]{};':\",./<>?\\|"
+
+type RS struct {
+	offset int
+}
+
+func (rs *RS) RandomString() string {
+	rs.offset++
+	if rs.offset + 25 >= len(pool) {
+		rs.offset = 0
+	}
+	return pool[rs.offset:rs.offset+25]
+}
+
+func BenchmarkStringEncodeDecode(b *testing.B) {
+	rs := &RS{}
+	buf := &bytes.Buffer{}
+	var err error
+	s, s2 := "", ""
+	
+	for i := 0; i < b.N; i++ {
+		s = rs.RandomString()
+		err = WriteString(buf, s)
+		if err != nil {
+			log.Fatal(err)
+		}
+		s2, err = ReadString(buf)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if s != s2 {
+			log.Fatal("Got incorrect string! Expected", s, "got", s2)
 		}
 	}
 }

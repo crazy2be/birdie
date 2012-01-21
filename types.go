@@ -83,3 +83,26 @@ func WriteInt(wr io.Writer, num uint64) error {
 	
 	return nil
 }
+
+func ReadString(rd io.Reader) (string, error) {
+	length, err := ReadInt(rd)
+	if err != nil {
+		return "", err
+	}
+	buf := make([]byte, length)
+	_, err = io.ReadFull(rd, buf)
+	return string(buf), err
+}
+
+func WriteString(wr io.Writer, data string) (error) {
+	err := WriteInt(wr, uint64(len(data)))
+	if err != nil {
+		return err
+	}
+	
+	_, err = io.WriteString(wr, data)
+	if err != nil {
+		return err
+	}
+	return nil
+}
