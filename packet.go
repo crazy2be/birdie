@@ -4,9 +4,23 @@ import (
 	"io"
 )
 
+func (c *Conn) NextPacket() (p *Packet, err error) {
+	p = &Packet{}
+	p.Type, err = ReadInt(c.con)
+	if err != nil {
+		return nil, err
+	}
+	p.Len, err = ReadInt(c.con)
+	if err != nil {
+		return nil, err
+	}
+	p.rd = c.con
+	return
+}
+
 type Packet struct {
-	Type int16
-	Len  int32
+	Type uint64
+	Len  uint64
 	rd   io.Reader
 }
 
